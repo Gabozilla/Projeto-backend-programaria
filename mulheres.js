@@ -1,39 +1,92 @@
-const express = require("express")
-const router = express.Router()
+const express = require("express") //iniciando o express
+const router = express.Router() //configurando a 1 parte da rota
+const conectaBandoDeDados = require("./bandoDeDados") // ligando ao arquivo BD
+conectaBandoDeDados() //chamando a função que conecta o BD
+const cors = require('cors') //pacote cors que permite consumir essa API no front-end
 
-const app = express()
-const porta = 3333
+const Mulher = require("./mulherModel")
+ 
 
-const mulheres = [
-        {
-            nome: 'Mitski',
-            imagem: 'https://i.guim.co.uk/img/media/a7006c663d1afe6521075d07c31300a34c7fe64c/0_242_5472_3283/master/5472.jpg?width=1200&height=1200&quality=85&auto=format&fit=crop&s=bef8a5ac63739457324e52746576bd77',
-            minibio: 'Cantora, compositora e musicista nipo-americana. Mitski lançou por conta seus dois primeiros álbuns, Lush e Retired from Sad, New Career in Business, enquanto ainda estudava no Conservatório de Música da Purchase College. ',
-        },
+const app = express() //iniciando o app
+app.use(express.json())
+app.use(cors())
 
-        {
-            nome: 'Lana del Rey',
-            imagem: 'https://numero.twic.pics/2024-01/lana-del-rey-skims-6.jpg?twic=v1/quality=83/truecolor=true/output=jpeg',
-            minibio: 'Cantora, compositora, modelo e poetisa americana',
-        },
+const porta = 3333 //criando a porta
 
-        {
-            nome: 'Melanie Martinez',
-            imagem: 'https://pbs.twimg.com/media/F091lveagAAcQS0.jpg',
-            minibio: 'Cantora, compositora, diretora e atriz estadunidense. Melanie se tornou conhecida por suas canções com letras polêmicas e por seu estilo e cabelo de duas cores. Suas letras combinam um lado obscuro com seu jeito super meigo',
-        }
-]
 
-function mostraMulheres(request, response){
-    response.json(mulheres)
+//GET
+async function mostraMulheres(request, response){
+    try{
+        const mulheresVindasDoBancoDeDados = await Mulher.find() //esperando a conexão, quando acontecer quero buscar todas as mulheres presentes na lista cientistas
 
+        response.json(mulheresVindasDoBancoDeDados)
+    }catch (erro){
+        console.log(erro)
+    }
 }
 
+//POST
+async function criaMulher(request, response) {
+
+    const novaMulher = new Mulher({
+        nome: request.body.nome,
+        imagem: request.body.imagem,
+        minibio: request.body.minibio
+    })
+    try{
+        const mulherCriada = await novaMulher.save()
+        response.status(201).json(mulherCriada)
+    }catch(erro){
+        console.log(erro)
+    }
+}
+
+//PATCH
+async function corrigeMulher(request, response){
+    try{
+        const mulherEncontrada = await Mulher.findById(request.params.id)
+
+        if(request.body.nome){
+            mulherEncontrada.nome = request.body.nome
+        }
+    
+        if(request.body.imagem){
+            mulherEncontrada.imagem = request.body.imagem
+        }
+    
+        if(request.body.minibio){
+            mulherEncontrada.minibio = request.body.minibio
+        }
+
+        const mulherAtualizadaNoBD = await mulherEncontrada.save()
+        response.json(mulherAtualizadaNoBD)
+
+    }catch(erro){
+        console.log(erro)
+    }
+}
+
+//DELETE
+  async  function deletaMulher(request, response){
+    try{
+        await Mulher.findByIdAndDelete(request.params.id)
+        response.json({message:'Mulher deletada com sucesso!'})
+    }catch(erro){
+        console.log(erro)
+    }
+}   
+
+//PORTA
 function mostraPorta() {
     console.log("Servidor criado e rodando na porta ", porta)
 }
+app.listen(porta, mostraPorta) //servidor ouvindo a porta
 
-app.use(router.get('/mulheres', mostraMulheres))
-app.listen(porta, mostraPorta)
+
+app.use(router.get('/mulheres', mostraMulheres)) //config rota GET /mulheres
+app.use(router.post('/mulheres', criaMulher)) //config rota POST /mulheres
+app.use(router.patch('/mulheres/:id', corrigeMulher)) //config rota PATCH /mulheres/:id
+app.use(router.delete('/mulheres/:id', deletaMulher)) //config rota DELETE /mulheres/:id
+
 
 
